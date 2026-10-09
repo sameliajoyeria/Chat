@@ -1,0 +1,76 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAMELIA Chat</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#ECE8E4;color:#302923}
+.chat{width:min(390px,100%);height:620px;max-height:100vh;background:#fff;border-radius:18px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 35px #0002}
+.header{background:#ECE8E4;padding:22px 20px;border-bottom:1px solid #ded7d0}
+.brand{font-family:Georgia,serif;letter-spacing:4px;font-size:20px}
+.subtitle{font-size:12px;margin-top:7px;color:#756a61}
+.messages{padding:18px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.msg{font-size:14px;line-height:1.5;padding:12px 14px;border-radius:14px;max-width:88%;overflow-wrap:anywhere}
+.bot{background:#F3F0ED;align-self:flex-start}
+.user{background:#76604D;color:white;align-self:flex-end}
+.quick{display:flex;flex-wrap:wrap;gap:7px;padding:0 14px 12px}
+.quick button{background:white;border:1px solid #cfc3b8;border-radius:20px;padding:8px 10px;cursor:pointer;color:#514235;font-size:12px}
+.inputrow{display:flex;padding:12px;border-top:1px solid #eee;gap:8px}
+.inputrow input{flex:1;min-width:0;border:1px solid #ddd;border-radius:22px;padding:12px;font-size:14px}
+.inputrow button{border:0;background:#76604D;color:white;border-radius:50%;width:43px;height:43px;cursor:pointer;font-size:18px}
+.note{text-align:center;font-size:10px;color:#887e75;padding:0 0 10px}
+</style>
+</head>
+<body>
+<div class="chat">
+  <header class="header">
+    <div class="brand">SAMELIA</div>
+    <div class="subtitle">Raíces que trascienden, joyas que perduran.</div>
+  </header>
+  <main class="messages" id="messages">
+    <div class="msg bot">¡Hola! Bienvenido a SAMELIA. ✨ ¿En qué puedo ayudarte a encontrar tu próxima joya?</div>
+  </main>
+  <div class="quick">
+    <button onclick="quick('¿Qué materiales utilizan?')">Materiales</button>
+    <button onclick="quick('¿Cómo funcionan los envíos?')">Envíos</button>
+    <button onclick="quick('Quiero ayuda para elegir una joya')">Elegir una joya</button>
+  </div>
+  <form class="inputrow" id="form">
+    <input id="entry" placeholder="Escribe tu pregunta..." autocomplete="off" required>
+    <button aria-label="Enviar mensaje" type="submit">➤</button>
+  </form>
+  <div class="note">Atención al cliente · SAMELIA</div>
+</div>
+<script>
+const messages=document.getElementById('messages');
+const entry=document.getElementById('entry');
+function add(text,who){
+  const div=document.createElement('div');
+  div.className='msg '+who;
+  div.textContent=text;
+  messages.appendChild(div);
+  messages.scrollTop=messages.scrollHeight;
+}
+function quick(text){entry.value=text;send()}
+function send(){
+  const text=entry.value.trim();
+  if(!text)return;
+  add(text,'user');
+  entry.value='';
+  const q=text.toLowerCase();
+  let answer='Gracias por escribir a SAMELIA. Para darte información exacta sobre tu consulta, puedes contactar con nuestro equipo de atención al cliente.';
+  if(/material|plata|925/.test(q))answer='Estaremos encantados de ayudarte con los materiales de nuestras joyas. Consulta la ficha del producto que te interesa para confirmar su composición exacta.';
+  else if(/env[ií]o|entrega|llega|domicilio/.test(q))answer='Realizamos envíos en Colombia según las condiciones de la tienda. El coste y el tiempo de entrega dependen de tu pedido y destino.';
+  else if(/precio|cu[aá]nto cuesta|valor/.test(q))answer='Puedes consultar el precio actualizado en la ficha de cada joya de nuestra tienda SAMELIA.';
+  else if(/cambio|garant[ií]a|devoluci[oó]n/.test(q))answer='Nuestro equipo puede orientarte sobre las condiciones de cambios y garantías aplicables a tu compra.';
+  else if(/elegir|recomienda|regalo|joya/.test(q))answer='¡Con gusto te ayudamos! ¿Buscas aretes, cadenas, anillos o pulseras? Puedes explorar el catálogo de SAMELIA para encontrar tu estilo.';
+  else if(/hola|buenas/.test(q))answer='¡Hola! ✨ Gracias por visitar SAMELIA. ¿Qué tipo de joya estás buscando?';
+  setTimeout(()=>add(answer,'bot'),350);
+}
+document.getElementById('form').addEventListener('submit',e=>{e.preventDefault();send()});
+</script>
+</body>
+</html>
