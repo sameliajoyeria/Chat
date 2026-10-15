@@ -75,9 +75,8 @@ const CACHE_MS=30000;
 let productCache=null;
 let productCacheAt=0;
 let productRequest=null;
-
 let flow='';
-let preferences={recipient:'',category:'',budget:null,style:''};
+let preferences={recipient:'',category:'',budget:null};
 let lastProducts=[];
 
 function norm(value){
@@ -120,15 +119,12 @@ function plain(html){
 }
 
 async function getProducts(force=false){
- if(!force&&productCache&&Date.now()-productCacheAt<CACHE_MS){
-  return productCache;
- }
+ if(!force&&productCache&&Date.now()-productCacheAt<CACHE_MS)return productCache;
  if(productRequest)return productRequest;
 
  productRequest=(async()=>{
   const response=await fetch(PRODUCTS_URL,{
-   headers:{Accept:'application/json'},
-   cache:'no-store'
+   headers:{Accept:'application/json'},cache:'no-store'
   });
   if(!response.ok)throw new Error('Shopify HTTP '+response.status);
   const data=await response.json();
@@ -146,9 +142,7 @@ async function getProducts(force=false){
     price:prices.length?Math.min(...prices):null,
     available:variants.some(v=>v.available===true),
     variants:variants.map(v=>({
-     title:v.title,
-     price:Number(v.price),
-     available:v.available
+     title:v.title,price:Number(v.price),available:v.available
     }))
    };
   });
@@ -228,7 +222,7 @@ const STOP=new Set([
  'este','y','o','material','materiales','plata','925','oro','regalo',
  'regalar','recomienda','recomendar','ayuda','ayudar','elegir','saber',
  'informacion','sobre','tiene','hasta','menos','mas','presupuesto',
- 'aproximado','aproximada','por','favor','sam​​elia','talla','medida'
+ 'aproximado','aproximada','por','favor','samelia','talla','medida'
 ]);
 
 function termsFrom(text){
@@ -268,7 +262,6 @@ function searchProducts(products,query){
  const category=categoryFrom(query);
  const terms=termsFrom(query);
 
- // Pregunta de categoría: no exigir un nombre de producto.
  if(category&&!terms.length){
   return {type:'category',products:products.filter(p=>hasCategory(p,category))};
  }
@@ -280,9 +273,7 @@ function searchProducts(products,query){
    const best=matches[0].score;
    return {type:'named',products:matches.filter(x=>x.score>=Math.max(.8,best-.15)).slice(0,5).map(x=>x.p)};
   }
-  if(category){
-   return {type:'category',products:products.filter(p=>hasCategory(p,category))};
-  }
+  if(category)return {type:'category',products:products.filter(p=>hasCategory(p,category))};
   return {type:'notfound',products:[]};
  }
 
@@ -315,7 +306,7 @@ function isGreeting(q){
 }
 
 function wantsRecommendation(q){
- return /elegir una joya|ayudame a elegir|recomiendame|recomendacion|ayuda para elegir|sorprendeme|que me recomiendas/.test(q);
+ return /elegir una joya|ayudame a elegir|recomiendame|recomendacion|ayuda para elegir|sorprendeme|que me recomiendas|que puedo regalar|que le regalo|quiero regalar|busco un regalo|ideas de regalo|regalo para|para mi mama|para mi madre|para mi pareja|para mi novia|para mi novio|para mi esposa|para mi esposo|cumpleanos|aniversario|ocasion especial/.test(q);
 }
 
 async function productAnswer(text){
@@ -329,28 +320,30 @@ async function productAnswer(text){
  return 'No encontré una joya con un nombre que coincida con «'+text+'». Para evitar darte información incorrecta, no voy a asignarle el precio de otro producto.\nCatálogo: '+LINKS.catalogo;
 }
 
-/* Respuestas frecuentes: información general y enlaces oficiales. */
+/* Preguntas frecuentes: las expresiones se evalúan sobre texto normalizado,
+   por eso funcionan con o sin tildes y con distintas formas de preguntar. */
 function faq(q){
+
  if(/envio gratis|envio gratuito|desde 150|150000/.test(q))
   return '🚚 El envío es gratis en compras desde $150.000 COP. Para compras inferiores, la tarifa informada por SAMELIA es de $12.900 COP. Consulta las condiciones vigentes: '+LINKS.envios;
 
- if(/envio|envios|entrega|domicilio|transportadora|coordinadora|cuanto tarda|cuanto demora|dias habiles/.test(q))
-  return '🚚 La información de envíos, cobertura, tarifas y plazos está en nuestra política oficial: '+LINKS.envios+'\nEl plazo estimado informado es de 10 días hábiles desde la confirmación del pago. Los tiempos pueden depender del destino y la transportadora.';
+ if(/envio|envios|entrega|domicilio|transportadora|coordinadora|cuanto tarda|cuanto demora|dias habiles|llega a mi ciudad|envian a/.test(q))
+  return '🚚 Consulta la cobertura, tarifas y condiciones de envío en nuestra política oficial: '+LINKS.envios+'\nEl plazo estimado informado es de 10 días hábiles desde la confirmación del pago. Los tiempos pueden depender del destino y la transportadora.';
 
- if(/rastrea|seguimiento|numero de guia|guia de envio|donde esta mi pedido|pedido no llega|pedido no ha llegado|pedido retrasado/.test(q))
-  return '📦 Para consultar el estado de un pedido individual, necesitamos acceder a la información de seguimiento de tu compra. Este chat aún no consulta automáticamente los pedidos privados de Shopify. Revisa la confirmación y la guía de la transportadora o escríbenos por WhatsApp: '+LINKS.whatsapp;
+ if(/rastrea|seguimiento|numero de guia|guia de envio|donde esta mi pedido|pedido no llega|pedido no ha llegado|pedido retrasado|estado de mi pedido/.test(q))
+  return '📦 Este chat aún no consulta automáticamente los pedidos privados de Shopify. Revisa la confirmación de compra y la guía de la transportadora. Si necesitas ayuda, escríbenos por WhatsApp: '+LINKS.whatsapp;
 
- if(/cambiar direccion|modificar direccion|direccion de entrega/.test(q))
-  return '📍 Si necesitas cambiar la dirección, contacta cuanto antes a nuestro equipo por WhatsApp: '+LINKS.whatsapp+'. El cambio depende de si el pedido ya fue preparado o enviado.';
+ if(/cambiar direccion|modificar direccion|direccion de entrega|me equivoque de direccion/.test(q))
+  return '📍 Contacta cuanto antes con nuestro equipo por WhatsApp: '+LINKS.whatsapp+'. El cambio depende de si el pedido ya fue preparado o enviado.';
 
  if(/recoger personalmente|recoger mi pedido|recogida en tienda/.test(q))
-  return 'Para confirmar si es posible recoger un pedido personalmente, consulta con nuestro equipo por WhatsApp: '+LINKS.whatsapp+'. No quiero prometer un servicio que no esté confirmado.';
+  return 'Para confirmar si es posible recoger un pedido personalmente, consulta con nuestro equipo por WhatsApp: '+LINKS.whatsapp+'.';
 
  if(/contraentrega|metodos de pago|formas de pago|como puedo pagar|como se paga|pse|nequi|daviplata|visa|mastercard|american express|tarjeta|efectivo|transferencia/.test(q))
   return '💳 La tienda informa opciones como Visa, Mastercard, American Express, Nequi, Daviplata y PSE, además de pago contraentrega. Las opciones disponibles pueden variar durante el checkout. Consulta los términos: '+LINKS.terminos;
 
- if(/pago rechazado|no pasa el pago|pago fallo|pago fallido|me cobraron|cobro duplicado|cobraron pero/.test(q))
-  return '💳 Si el pago fue rechazado o aparece un cobro sin confirmación, revisa primero el estado de tu pedido y el comprobante de pago. No vuelvas a pagar hasta comprobar si se generó el pedido. Si persiste, contacta a nuestro equipo: '+LINKS.whatsapp;
+ if(/pago rechazado|no pasa el pago|pago fallo|pago fallido|me cobraron|cobro duplicado|cobraron pero|no aparece mi pago/.test(q))
+  return '💳 Si el pago fue rechazado o aparece un cobro sin confirmación, revisa primero el estado de tu pedido y el comprobante. No vuelvas a pagar hasta comprobar si se generó el pedido. Si persiste, contacta a nuestro equipo: '+LINKS.whatsapp;
 
  if(/compra segura|es seguro comprar|seguridad de la compra|pagina segura/.test(q))
   return '🔒 Para comprar, utiliza el sitio oficial https://samelia.co y verifica que la dirección sea correcta antes de introducir tus datos. Consulta los términos y la política de privacidad: '+LINKS.terminos+' '+LINKS.privacidad;
@@ -358,44 +351,46 @@ function faq(q){
  if(/como comprar|como puedo comprar|hacer un pedido|realizar un pedido|comprar una joya/.test(q))
   return '🛍️ Para comprar en SAMELIA: 1. Elige una joya. 2. Abre su ficha y revisa el precio y las características. 3. Añádela al carrito. 4. Continúa al checkout y completa los datos solicitados. 5. Selecciona un método de pago disponible y confirma el pedido. Catálogo: '+LINKS.catalogo;
 
- if(/carrito|anadir al carrito|agregar al carrito|no me deja comprar|no puedo comprar|error en la pagina/.test(q))
-  return '🛒 Comprueba que el producto esté disponible, que hayas seleccionado las opciones necesarias y que el navegador permita cargar la tienda. Si el problema continúa, envíanos una captura y escríbenos por WhatsApp: '+LINKS.whatsapp;
+ if(/carrito|anadir al carrito|agregar al carrito|no me deja comprar|no puedo comprar|error en la pagina|no funciona la tienda/.test(q))
+  return '🛒 Comprueba que el producto esté disponible, que hayas seleccionado las opciones necesarias y que el navegador permita cargar la tienda. Si el problema continúa, envíanos una captura por WhatsApp: '+LINKS.whatsapp;
 
  if(/cancelar pedido|cancelacion del pedido/.test(q))
-  return 'Para solicitar la cancelación, contacta cuanto antes con nuestro equipo por WhatsApp: '+LINKS.whatsapp+'. La posibilidad de cancelarlo depende del estado del pedido y de las políticas aplicables.';
+  return 'Para solicitar una cancelación, contacta cuanto antes con nuestro equipo por WhatsApp: '+LINKS.whatsapp+'. La posibilidad de cancelarlo depende del estado del pedido y de las políticas aplicables.';
 
- if(/cambio|devolucion|devolver|reembolso|dinero de vuelta|garantia|garantía/.test(q))
+ if(/cambio|devolucion|devolver|reembolso|dinero de vuelta|garantia/.test(q))
   return '💗 Consulta las condiciones y el procedimiento aplicable en nuestra política oficial: '+LINKS.devoluciones+'\nSi quieres presentar un caso, contacta con nuestro equipo: '+LINKS.whatsapp;
 
  if(/llego danado|llego roto|producto equivocado|joya equivocada|falta un producto|producto faltante|pedido incompleto/.test(q))
-  return '💗 Lamentamos el inconveniente. Conserva el embalaje, toma fotos de lo recibido y guarda la confirmación de compra. Escríbenos por WhatsApp con el número de pedido y las evidencias para que el equipo revise tu caso: '+LINKS.whatsapp;
+  return '💗 Lamentamos el inconveniente. Conserva el embalaje, toma fotos de lo recibido y guarda la confirmación de compra. Escríbenos por WhatsApp con el número de pedido y las evidencias: '+LINKS.whatsapp;
 
  if(/cuanto tarda el reembolso|cuando recibo el reembolso|quien paga el envio de devolucion/.test(q))
   return 'Los plazos y gastos dependen de las condiciones aplicables a tu caso. Consulta la política oficial: '+LINKS.devoluciones+'. Para que revisemos tu situación, escríbenos: '+LINKS.whatsapp;
 
- if(/plata 925|que significa 925|significa plata/.test(q))
-  return '💎 La indicación 925 se refiere a una aleación de plata con un 92,5 % de plata. Para confirmar el material de una joya concreta, revisa su ficha de producto o dime su nombre para buscarla en el catálogo.';
+ if(/plata 925|que significa 925|significa plata|es plata de verdad|plata autentica|plata autentica/.test(q))
+  return '💎 La indicación 925 se refiere a una aleación compuesta por un 92,5 % de plata. Para confirmar el material de una joya concreta, revisa su ficha de producto o dime su nombre para buscarla en el catálogo.';
 
- if(/hipoalergen|alergia|alergico|alergica|contiene niquel|níquel/.test(q))
+ if(/hipoalergen|alergia|alergico|alergica|contiene niquel|niquel/.test(q))
   return 'La tolerancia depende de los materiales concretos de cada pieza y de cada persona. No puedo asegurar que una joya sea hipoalergénica o esté libre de níquel si esa información no está confirmada en su ficha. Consulta el producto o contacta con el equipo: '+LINKS.whatsapp;
 
- if(/se pone negra|se ponen negras|se oscurece|pierde el color|pierden el color|se oxida|se mancha/.test(q))
-  return '✨ La plata puede oscurecerse con el tiempo por la reacción con el ambiente, la humedad y otras sustancias. Los acabados y recubrimientos pueden necesitar cuidados distintos. Consulta la ficha de tu pieza y evita productos abrasivos.';
+ if(/se pone negra|se ponen negras|se oscurece|pierde el color|pierden el color|se oxida|se mancha|plata negra/.test(q))
+  return '✨ La plata puede oscurecerse con el tiempo por la reacción con el ambiente, la humedad y otras sustancias. Los acabados y recubrimientos pueden necesitar cuidados distintos. Evita productos abrasivos y guarda tus joyas secas.';
 
  if(/puedo mojar|ducharme|ducha|piscina|mar|nadar|dormir con|hacer ejercicio con/.test(q))
-  return '💎 Para conservar las joyas, es recomendable evitar el contacto con agua, cloro, perfumes, cremas y sudor durante periodos prolongados. Los cuidados exactos dependen del material y del acabado de cada pieza.';
+  return '💎 Para conservar tus joyas, es recomendable evitar el contacto prolongado con agua, cloro, perfumes, cremas y sudor. Los cuidados exactos dependen del material y del acabado de cada pieza.';
 
- if(/limpiar|limpieza|cuidar|cuidado|guardar las joyas|conservar las joyas/.test(q))
-  return '✨ Consejos generales: guarda las joyas secas y por separado, evita perfumes y productos químicos, y límpialas suavemente con un paño adecuado para joyería. No uses productos abrasivos en piezas con piedras o recubrimientos delicados.';
+ /* CORRECCIÓN: incluye "limpio", "limpia", "limpiar", "limpiarlas"
+    y otras variantes de la misma pregunta. */
+ if(/\blimpi\w*|\bcuid\w*|guardar las joyas|conservar las joyas|mantener las joyas|como mantener mis joyas/.test(q))
+  return '✨ Para limpiar tus joyas SAMELIA, pasa suavemente un paño limpio y suave para retirar residuos y humedad. Guárdalas completamente secas y por separado. Evita perfumes, cloro, alcohol, limpiadores domésticos y productos abrasivos, especialmente si tienen piedras o recubrimientos delicados. Los cuidados exactos dependen del material y del acabado de cada pieza.';
 
- if(/talla de anillo|medida de anillo|saber mi talla|no se mi talla/.test(q))
-  return '💍 Para conocer tu talla de anillo, mide la circunferencia de tu dedo con una tira de papel sin apretarla y compara la medida con una tabla de tallas fiable. Si la ficha del producto incluye medidas, úsala como referencia. Si necesitas confirmar tallas disponibles, consulta al equipo: '+LINKS.whatsapp;
+ if(/talla de anillo|medida de anillo|saber mi talla|no se mi talla|que talla soy/.test(q))
+  return '💍 Para conocer tu talla de anillo, mide la circunferencia de tu dedo con una tira de papel sin apretarla y compara la medida con una tabla de tallas fiable. Si la ficha del producto incluye medidas, úsala como referencia. Para confirmar tallas disponibles, consulta al equipo: '+LINKS.whatsapp;
 
- if(/cuanto mide|longitud de la cadena|largo de la cadena|medidas de la cadena|medida de pulsera|talla de pulsera|grande o pequeno|grande o pequena|peso de la joya/.test(q))
+ if(/cuanto mide|longitud de la cadena|largo de la cadena|medidas de la cadena|medida de pulsera|talla de pulsera|grande o pequeno|grande o pequena|peso de la joya|longitud del collar/.test(q))
   return '📏 Las medidas y el peso dependen de cada diseño. Dime el nombre exacto de la joya para buscar la información disponible en su ficha. Si no está publicada, el equipo podrá ayudarte: '+LINKS.whatsapp;
 
  if(/empaque para regalo|empaque de regalo|envoltura de regalo|caja de regalo|enviar regalo directamente/.test(q))
-  return '🎁 Para confirmar si hay empaque de regalo o instrucciones especiales de entrega, contacta con nuestro equipo por WhatsApp: '+LINKS.whatsapp+'. No quiero prometer un servicio que no esté confirmado.';
+  return '🎁 Para confirmar si hay empaque de regalo o instrucciones especiales de entrega, contacta con nuestro equipo por WhatsApp: '+LINKS.whatsapp+'.';
 
  if(/descuento|descuentos|promocion|promociones|oferta|ofertas|comprar varias|descuento por cantidad/.test(q))
   return '✨ Los precios y promociones vigentes deben comprobarse en la tienda. Consulta el catálogo para ver los precios actuales: '+LINKS.catalogo+'. No puedo garantizar un descuento por cantidad si no aparece publicado.';
@@ -413,13 +408,10 @@ function faq(q){
   return '💗 Escríbenos por WhatsApp y nuestro equipo te ayudará: '+LINKS.whatsapp;
 
  if(/no encuentro el producto|producto no aparece|producto agotado|agotado|volveran a tener|reponer/.test(q))
-  return 'Puedes consultar el catálogo actualizado aquí: '+LINKS.catalogo+'. Si no aparece una joya o está agotada, contacta con nuestro equipo para confirmar si habrá reposición: '+LINKS.whatsapp;
+  return 'Puedes consultar el catálogo aquí: '+LINKS.catalogo+'. Si no aparece una joya o está agotada, contacta con nuestro equipo para confirmar si habrá reposición: '+LINKS.whatsapp;
 
  if(/que tipos de joyas|tipos de joyas|que venden|que productos venden|que categorias/.test(q))
-  return '💎 Puedes explorar las joyas publicadas en nuestro catálogo, que puede incluir cadenas, collares, aretes, anillos, pulseras, dijes y otras categorías según los productos disponibles: '+LINKS.catalogo;
-
- if(/regalo|regalar|para mi mama|para mi madre|para mi pareja|para mi novia|para mi novio|cumpleanos|aniversario|ocasion especial/.test(q))
-  return null;
+  return '💎 Explora nuestro catálogo para ver las joyas publicadas y las categorías disponibles: '+LINKS.catalogo;
 
  return null;
 }
@@ -465,12 +457,8 @@ async function recommendationStepAnswer(text){
   const products=await getProducts();
   let items=products.filter(p=>p.available&&p.price!==null);
 
-  if(preferences.category){
-   items=items.filter(p=>hasCategory(p,preferences.category));
-  }
-  if(budget!=='unlimited'){
-   items=items.filter(p=>p.price<=budget);
-  }
+  if(preferences.category)items=items.filter(p=>hasCategory(p,preferences.category));
+  if(budget!=='unlimited')items=items.filter(p=>p.price<=budget);
 
   items.sort((a,b)=>a.price-b.price);
   flow='';
@@ -492,7 +480,6 @@ async function send(){
  let answer=null;
 
  try{
-  // Permite salir del flujo guiado para formular otra pregunta.
   const exitFlow=/^(cancelar|salir|volver|otra pregunta|empezar de nuevo)$/.test(q);
 
   if(exitFlow){
@@ -501,7 +488,7 @@ async function send(){
 
   }else if(wantsRecommendation(q)){
    flow='recipient';
-   preferences={recipient:'',category:'',budget:null,style:''};
+   preferences={recipient:'',category:'',budget:null};
    answer='¡Con mucho gusto! 💗 Te ayudaré a elegir una joya según tus preferencias. ¿Es para ti o para regalar?';
 
   }else if(flow){
@@ -511,7 +498,6 @@ async function send(){
    answer='¡Hola! ✨ Bienvenido a SAMELIA. Puedo ayudarte con nuestros productos, precios, envíos, pagos, compras, cuidados y otras dudas. ¿Qué necesitas?';
 
   }else{
-   // Primero intentar una pregunta frecuente.
    answer=faq(q);
 
    if(!answer){
@@ -522,14 +508,10 @@ async function send(){
     if(productIntent){
      answer=await productAnswer(text);
     }else{
-     // Intentar resolver preguntas sobre nombres o detalles de productos.
      const terms=termsFrom(q);
      if(terms.length>=1&&/material|tiene|tienen|muestrame|mostrar|busco|quiero ver|precio/.test(q)){
-      try{
-       answer=await productAnswer(text);
-      }catch(e){
-       answer=null;
-      }
+      try{answer=await productAnswer(text)}
+      catch(e){answer=null}
      }
     }
    }
