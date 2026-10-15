@@ -19,595 +19,590 @@ body{margin:0;font-family:Arial,sans-serif;background:#ECE8E4;color:#302923}
 .msg a{color:#72533d;text-decoration:underline;overflow-wrap:anywhere}
 .quick{display:flex;flex-wrap:wrap;gap:7px;padding:0 14px 12px}
 .quick button{background:white;border:1px solid #cfc3b8;border-radius:20px;padding:8px 10px;cursor:pointer;color:#514235;font-size:12px}
-.quick button:disabled,.inputrow button:disabled{opacity:.55;cursor:wait}
 .inputrow{display:flex;padding:12px;border-top:1px solid #eee;gap:8px}
 .inputrow input{flex:1;min-width:0;border:1px solid #ddd;border-radius:22px;padding:12px;font-size:14px}
 .inputrow button{border:0;background:#76604D;color:white;border-radius:50%;width:43px;height:43px;cursor:pointer;font-size:18px}
+.inputrow button:disabled{opacity:.5}
 .note{text-align:center;font-size:10px;color:#887e75;padding:0 0 10px}
 </style>
 </head>
 <body>
 <div class="chat">
 <header class="header">
-  <div class="brand">SAMELIA</div>
-  <div class="subtitle">Raíces que trascienden, joyas que perduran.</div>
+<div class="brand">SAMELIA</div>
+<div class="subtitle">Raíces que trascienden, joyas que perduran.</div>
 </header>
 
 <main class="messages" id="messages" aria-live="polite">
-  <div class="msg bot">¡Hola! Bienvenido a SAMELIA. ✨ Estamos aquí para ayudarte a encontrar una joya especial. ¿Qué te gustaría saber?</div>
+<div class="msg bot">¡Hola! Bienvenido a SAMELIA. ✨ Estamos aquí para ayudarte a encontrar una joya especial. ¿Qué te gustaría saber?</div>
 </main>
 
 <div class="quick">
-  <button type="button" onclick="quick('¿Qué materiales utilizan?')">Materiales</button>
-  <button type="button" onclick="quick('¿Cómo funcionan los envíos?')">Envíos</button>
-  <button type="button" onclick="quick('¿Qué métodos de pago aceptan?')">Pagos</button>
-  <button type="button" onclick="quick('Quiero ayuda para elegir una joya')">Elegir una joya</button>
+<button type="button" onclick="quick('¿Qué materiales utilizan?')">Materiales</button>
+<button type="button" onclick="quick('¿Cómo funcionan los envíos?')">Envíos</button>
+<button type="button" onclick="quick('¿Qué métodos de pago aceptan?')">Pagos</button>
+<button type="button" onclick="quick('Quiero ayuda para elegir una joya')">Elegir una joya</button>
 </div>
 
 <form class="inputrow" id="form">
-  <input id="entry" placeholder="Escribe tu pregunta..." autocomplete="off" required>
-  <button id="sendButton" aria-label="Enviar mensaje" type="submit">➤</button>
+<input id="entry" placeholder="Escribe tu pregunta..." autocomplete="off" required>
+<button id="sendButton" type="submit" aria-label="Enviar mensaje">➤</button>
 </form>
 <div class="note">Atención al cliente · SAMELIA</div>
 </div>
 
 <script>
-const messages = document.getElementById('messages');
-const entry = document.getElementById('entry');
-const sendButton = document.getElementById('sendButton');
+const messages=document.getElementById('messages');
+const entry=document.getElementById('entry');
+const sendButton=document.getElementById('sendButton');
 
-const links = {
-  envios: 'https://samelia.co/policies/shipping-policy',
-  reembolsos: 'https://samelia.co/policies/refund-policy',
-  terminos: 'https://samelia.co/policies/terms-of-service',
-  privacidad: 'https://samelia.co/policies/privacy-policy',
-  instagram: 'https://www.instagram.com/samelia.plata925/',
-  whatsapp: 'https://wa.me/573144729199',
-  catalogo: 'https://samelia.co/collections/all'
+const links={
+ envios:'https://samelia.co/policies/shipping-policy',
+ reembolsos:'https://samelia.co/policies/refund-policy',
+ terminos:'https://samelia.co/policies/terms-of-service',
+ privacidad:'https://samelia.co/policies/privacy-policy',
+ instagram:'https://www.instagram.com/samelia.plata925/',
+ whatsapp:'https://wa.me/573144729199',
+ catalogo:'https://samelia.co/collections/all'
 };
 
-const PRODUCTS_URL = 'https://samelia.co/products.json?limit=250';
-const CACHE_MS = 60000;
+const PRODUCTS_URL='https://samelia.co/products.json?limit=250';
+const CACHE_MS=30000;
 
-let productsCache = null;
-let productsCacheTime = 0;
-let productsRequest = null;
+let productsCache=null;
+let productsCacheTime=0;
+let productsRequest=null;
 
-let recommendationStep = '';
-let recommendation = {
-  recipient: '',
-  category: '',
-  budget: null
-};
+let recommendationStep='';
+let recommendation={recipient:'',category:'',budget:null};
 
-function normalize(value) {
-  return String(value || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s$.,]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+function normalize(value){
+ return String(value||'').toLowerCase()
+ .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+ .replace(/[^a-z0-9\s$.,]/g,' ')
+ .replace(/\s+/g,' ').trim();
 }
 
-function add(text, who) {
-  const div = document.createElement('div');
-  div.className = 'msg ' + who;
+function add(text,who){
+ const div=document.createElement('div');
+ div.className='msg '+who;
 
-  String(text).split(/(https?:\/\/[^\s]+)/g).forEach(part => {
-    if (/^https?:\/\//.test(part)) {
-      const url = part.replace(/[.,!?]+$/, '');
-      const a = document.createElement('a');
-      a.href = url;
-      a.textContent = url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      div.appendChild(a);
+ String(text).split(/(https?:\/\/[^\s]+)/g).forEach(part=>{
+  if(/^https?:\/\//.test(part)){
+   const url=part.replace(/[.,!?]+$/,'');
+   const a=document.createElement('a');
+   a.href=url;
+   a.textContent=url;
+   a.target='_blank';
+   a.rel='noopener noreferrer';
+   div.appendChild(a);
+   const punctuation=part.slice(url.length);
+   if(punctuation)div.appendChild(document.createTextNode(punctuation));
+  }else{
+   div.appendChild(document.createTextNode(part));
+  }
+ });
 
-      const punctuation = part.slice(url.length);
-      if (punctuation) {
-        div.appendChild(document.createTextNode(punctuation));
-      }
-    } else {
-      div.appendChild(document.createTextNode(part));
-    }
+ messages.appendChild(div);
+ messages.scrollTop=messages.scrollHeight;
+}
+
+function quick(text){
+ entry.value=text;
+ send();
+}
+
+function plainDescription(html){
+ const el=document.createElement('div');
+ el.innerHTML=String(html||'');
+ el.querySelectorAll('script,style,noscript').forEach(n=>n.remove());
+ return (el.textContent||'').replace(/\s+/g,' ').trim();
+}
+
+async function getProducts(){
+ if(productsCache&&Date.now()-productsCacheTime<CACHE_MS){
+  return productsCache;
+ }
+
+ if(productsRequest)return productsRequest;
+
+ productsRequest=(async()=>{
+  const response=await fetch(PRODUCTS_URL,{
+   headers:{Accept:'application/json'},
+   cache:'no-store'
   });
 
-  messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
-}
+  if(!response.ok)throw new Error('Shopify HTTP '+response.status);
 
-function quick(text) {
-  entry.value = text;
-  send();
-}
+  const data=await response.json();
 
-function plainDescription(html) {
-  const el = document.createElement('div');
-  el.innerHTML = String(html || '');
-  el.querySelectorAll('script,style,noscript').forEach(n => n.remove());
-  return (el.textContent || '').replace(/\s+/g, ' ').trim();
-}
-
-async function getProducts() {
-  if (productsCache && Date.now() - productsCacheTime < CACHE_MS) {
-    return productsCache;
+  if(!Array.isArray(data.products)){
+   throw new Error('No se recibió el catálogo de Shopify');
   }
 
-  if (productsRequest) return productsRequest;
+  productsCache=data.products.map(p=>{
+   const variants=Array.isArray(p.variants)?p.variants:[];
+   const prices=variants.map(v=>Number(v.price))
+    .filter(n=>Number.isFinite(n)&&n>=0);
 
-  productsRequest = (async () => {
-    const response = await fetch(PRODUCTS_URL, {
-      headers: { 'Accept': 'application/json' },
-      cache: 'no-store'
-    });
+   return {
+    title:p.title||'Producto SAMELIA',
+    handle:p.handle||'',
+    description:plainDescription(p.body_html||''),
+    tags:Array.isArray(p.tags)?p.tags.join(' '):'',
+    price:prices.length?Math.min(...prices):null,
+    available:variants.some(v=>v.available===true)
+   };
+  });
 
-    if (!response.ok) {
-      throw new Error('Shopify HTTP ' + response.status);
-    }
+  productsCacheTime=Date.now();
+  return productsCache;
+ })();
 
-    const data = await response.json();
-
-    if (!Array.isArray(data.products)) {
-      throw new Error('Catálogo de Shopify no válido');
-    }
-
-    productsCache = data.products.map(p => {
-      const variants = Array.isArray(p.variants) ? p.variants : [];
-      const prices = variants
-        .map(v => Number(v.price))
-        .filter(n => Number.isFinite(n) && n >= 0);
-
-      return {
-        title: p.title || 'Producto SAMELIA',
-        handle: p.handle || '',
-        description: plainDescription(p.body_html || ''),
-        tags: Array.isArray(p.tags) ? p.tags.join(' ') : '',
-        price: prices.length ? Math.min(...prices) : null,
-        available: variants.some(v => v.available === true)
-      };
-    });
-
-    productsCacheTime = Date.now();
-    return productsCache;
-  })();
-
-  try {
-    return await productsRequest;
-  } finally {
-    productsRequest = null;
-  }
+ try{
+  return await productsRequest;
+ }finally{
+  productsRequest=null;
+ }
 }
 
-function productUrl(product) {
-  return product.handle
-    ? 'https://samelia.co/products/' + encodeURIComponent(product.handle)
-    : links.catalogo;
+function productUrl(p){
+ return p.handle
+  ?'https://samelia.co/products/'+encodeURIComponent(p.handle)
+  :links.catalogo;
 }
 
-function money(value) {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0
-  }).format(value);
+function money(value){
+ return new Intl.NumberFormat('es-CO',{
+  style:'currency',
+  currency:'COP',
+  maximumFractionDigits:0
+ }).format(value);
 }
 
-function productDetails(product) {
-  let result = '✨ ' + product.title + '\n';
+function productDetails(p){
+ let result='✨ '+p.title+'\n';
 
-  result += product.available
-    ? 'Disponible según el catálogo de Shopify.\n'
-    : 'Shopify no marca este producto como disponible actualmente.\n';
+ result+=p.available
+  ?'Estado: disponible según Shopify.\n'
+  :'Estado: Shopify no marca este producto como disponible.\n';
 
-  if (product.price !== null && product.price > 0) {
-    result += 'Precio publicado: ' + money(product.price) + '.\n';
-  } else {
-    result += 'No pude confirmar un precio válido en el catálogo.\n';
-  }
+ result+=p.price!==null
+  ?'Precio publicado: '+money(p.price)+'.\n'
+  :'No pude confirmar el precio.\n';
 
-  if (product.description) {
-    result += 'Descripción: ' + product.description.slice(0, 350);
+ if(p.description){
+  result+='Descripción: '+p.description.slice(0,450);
+  if(p.description.length>450)result+='…';
+  result+='\n';
+ }
 
-    if (product.description.length > 350) {
-      result += '…';
-    }
-
-    result += '\n';
-  }
-
-  result += 'Ver producto: ' + productUrl(product);
-  return result;
+ result+='Ver producto: '+productUrl(p);
+ return result;
 }
 
-const CATEGORY_TERMS = {
-  cadena: ['cadena', 'cadenas', 'collar', 'collares', 'gargantilla', 'gargantillas'],
-  collar: ['collar', 'collares', 'cadena', 'cadenas', 'gargantilla', 'gargantillas'],
-  aretes: ['arete', 'aretes', 'pendiente', 'pendientes', 'candonga', 'candongas', 'topo', 'topos'],
-  anillo: ['anillo', 'anillos', 'sortija', 'sortijas'],
-  pulsera: ['pulsera', 'pulseras', 'brazalete', 'brazaletes'],
-  tobillera: ['tobillera', 'tobilleras'],
-  dije: ['dije', 'dijes', 'colgante', 'colgantes']
+/* Todas las categorías y sus sinónimos. */
+const CATEGORIES={
+ cadenas:[
+  'cadena','cadenas','gargantilla','gargantillas'
+ ],
+ collares:[
+  'collar','collares','gargantilla','gargantillas'
+ ],
+ aretes:[
+  'arete','aretes','pendiente','pendientes',
+  'candonga','candongas','topo','topos',
+  'argolla','argollas','huggie','huggies'
+ ],
+ anillos:[
+  'anillo','anillos','sortija','sortijas'
+ ],
+ pulseras:[
+  'pulsera','pulseras','brazalete','brazaletes'
+ ],
+ tobilleras:[
+  'tobillera','tobilleras'
+ ],
+ dijes:[
+  'dije','dijes','colgante','colgantes'
+ ],
+ charms:[
+  'charm','charms'
+ ],
+ sets:[
+  'set','sets','juego','juegos','conjunto','conjuntos'
+ ],
+ relojes:[
+  'reloj','relojes'
+ ]
 };
 
-function categoryFrom(text) {
-  const q = normalize(text);
+function categoryFrom(text){
+ const q=normalize(text);
+ const words=q.split(' ');
 
-  for (const [category, terms] of Object.entries(CATEGORY_TERMS)) {
-    if (terms.some(term => new RegExp('\\b' + term + '\\b').test(q))) {
-      return category;
-    }
+ for(const [category,terms] of Object.entries(CATEGORIES)){
+  if(terms.some(term=>words.includes(term))){
+   return category;
   }
+ }
 
-  return '';
+ return '';
 }
 
-function productHasCategory(product, category) {
-  const terms = CATEGORY_TERMS[category] || [category];
-  const titleAndTags = normalize(product.title + ' ' + product.tags);
+function productHasCategory(product,category){
+ const terms=CATEGORIES[category]||[category];
 
-  return terms.some(term =>
-    new RegExp('\\b' + term + '\\b').test(titleAndTags)
-  );
+ // Se utilizan título y etiquetas para clasificar la joya.
+ const title=normalize(product.title);
+ const tags=normalize(product.tags);
+ const titleWords=title.split(' ');
+ const tagWords=tags.split(/[\s,]+/);
+
+ if(terms.some(term=>
+  titleWords.includes(term)||tagWords.includes(term)
+ ))return true;
+
+ // Las descripciones solo se utilizan como apoyo para detectar
+ // productos que no incluyan su categoría en el título.
+ const description=normalize(product.description);
+
+ return terms.some(term=>
+  description.split(' ').includes(term)
+ );
 }
 
-const STOPWORDS = new Set([
-  'cuanto','cuesta','cuestan','vale','valen','precio','precios','valor',
-  'dime','decir','quiero','quisiera','busco','buscar','ver','mostrar',
-  'muestra','tienes','tienen','hay','disponible','disponibilidad',
-  'catalogo','producto','productos','joya','joyas','bonito','bonita',
-  'hermoso','hermosa','especial','favor','por','una','uno','unas','unos',
-  'que','cual','cuales','como','donde','de','del','la','el','las','los',
-  'para','con','sin','en','mi','me','tu','su','es','son','esta','estan',
-  'este','y','o','material','materiales','plata','925','oro','regalo',
-  'regalar','recomienda','recomendar','ayuda','ayudar','elegir','saber',
-  'informacion','sobre','tiene','tienen'
+const STOPWORDS=new Set([
+ 'cuanto','cuesta','cuestan','vale','valen','precio','precios','valor',
+ 'dime','decir','quiero','quisiera','busco','buscar','ver','mostrar',
+ 'muestra','tienes','tienen','hay','disponible','disponibilidad',
+ 'catalogo','producto','productos','joya','joyas','bonito','bonita',
+ 'hermoso','hermosa','especial','favor','una','uno','unas','unos',
+ 'que','cual','cuales','como','donde','de','del','la','el','las','los',
+ 'para','con','sin','en','mi','me','tu','su','es','son','esta','estan',
+ 'este','y','o','material','materiales','plata','925','oro','regalo',
+ 'regalar','recomienda','recomendar','ayuda','ayudar','elegir','saber',
+ 'informacion','sobre','tiene','tienen','sam​​elia','hasta','menos',
+ 'mas','aproximado','aproximada','presupuesto','por','favor'
 ]);
 
-function queryTerms(text) {
-  return [...new Set(normalize(text).split(' ').filter(word =>
-    word.length > 2 &&
-    !STOPWORDS.has(word) &&
-    !Object.values(CATEGORY_TERMS).flat().includes(word)
-  ))];
+function queryTerms(text){
+ const categoryWords=Object.values(CATEGORIES).flat();
+
+ return [...new Set(normalize(text).split(' ').filter(word=>
+  word.length>2&&
+  !STOPWORDS.has(word)&&
+  !categoryWords.includes(word)
+ ))];
 }
 
-function editDistance(a, b) {
-  if (Math.abs(a.length - b.length) > 1) return 2;
+function editDistance(a,b){
+ if(Math.abs(a.length-b.length)>1)return 2;
 
-  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+ const row=Array.from({length:b.length+1},(_,i)=>i);
 
-  for (let i = 1; i <= a.length; i++) {
-    let diagonal = row[0];
-    row[0] = i;
+ for(let i=1;i<=a.length;i++){
+  let diagonal=row[0];
+  row[0]=i;
 
-    for (let j = 1; j <= b.length; j++) {
-      const old = row[j];
+  for(let j=1;j<=b.length;j++){
+   const old=row[j];
 
-      row[j] = Math.min(
-        row[j] + 1,
-        row[j - 1] + 1,
-        diagonal + (a[i - 1] === b[j - 1] ? 0 : 1)
-      );
+   row[j]=Math.min(
+    row[j]+1,
+    row[j-1]+1,
+    diagonal+(a[i-1]===b[j-1]?0:1)
+   );
 
-      diagonal = old;
-    }
+   diagonal=old;
   }
+ }
 
-  return row[b.length];
+ return row[b.length];
 }
 
-function titleScore(query, product) {
-  const terms = queryTerms(query);
+function titleScore(query,p){
+ const terms=queryTerms(query);
+ const words=normalize(
+  p.title+' '+p.handle.replace(/-/g,' ')
+ ).split(' ');
 
-  const nameWords = normalize(
-    product.title + ' ' + product.handle.replace(/-/g, ' ')
-  ).split(' ');
+ if(!terms.length)return 0;
 
-  if (!terms.length) return 0;
+ let matched=0;
 
-  let matched = 0;
-
-  for (const term of terms) {
-    if (nameWords.includes(term)) {
-      matched += 1;
-    } else if (
-      term.length >= 5 &&
-      nameWords.some(word =>
-        word.length >= 5 && editDistance(term, word) === 1
-      )
-    ) {
-      matched += 0.8;
-    }
+ for(const term of terms){
+  if(words.includes(term)){
+   matched++;
+  }else if(
+   term.length>=5&&
+   words.some(w=>w.length>=5&&editDistance(term,w)===1)
+  ){
+   matched+=0.8;
   }
+ }
 
-  return matched / terms.length;
+ return matched/terms.length;
 }
 
-function searchProducts(products, query) {
-  const category = categoryFrom(query);
-  const terms = queryTerms(query);
+function searchProducts(products,query){
+ const category=categoryFrom(query);
+ const terms=queryTerms(query);
 
-  if (terms.length) {
-    const matches = products
-      .map(product => ({
-        product,
-        score: titleScore(query, product)
-      }))
-      .filter(item => item.score >= 0.8)
-      .sort((a, b) => b.score - a.score);
+ // Si hay un nombre concreto, buscar por nombre antes de
+ // ofrecer productos de una categoría genérica.
+ if(terms.length){
+  const matches=products.map(p=>({
+   product:p,
+   score:titleScore(query,p)
+  }))
+  .filter(x=>x.score>=0.8)
+  .sort((a,b)=>b.score-a.score);
 
-    if (matches.length) {
-      const topScore = matches[0].score;
+  if(matches.length){
+   const best=matches[0].score;
 
-      return {
-        type: 'named',
-        products: matches
-          .filter(item => item.score >= Math.max(0.8, topScore - 0.15))
-          .slice(0, 4)
-          .map(item => item.product)
-      };
-    }
-
-    return { type: 'notfound', products: [] };
+   return {
+    type:'named',
+    products:matches
+     .filter(x=>x.score>=Math.max(0.8,best-0.15))
+     .slice(0,5)
+     .map(x=>x.product)
+   };
   }
 
-  if (category) {
-    return {
-      type: 'category',
-      products: products
-        .filter(product => productHasCategory(product, category))
-        .slice(0, 6)
-    };
-  }
+  return {type:'notfound',products:[]};
+ }
 
-  return { type: 'none', products: [] };
+ if(category){
+  return {
+   type:'category',
+   category,
+   products:products.filter(p=>productHasCategory(p,category))
+  };
+ }
+
+ return {type:'none',products:[]};
 }
 
-function listProducts(products, intro) {
-  if (!products.length) {
-    return 'No encontré productos de esa categoría en el catálogo público actual. Puedes revisar la tienda aquí: ' +
-      links.catalogo +
-      '\nSi me dices el nombre exacto de la joya, intentaré buscarla por su nombre.';
-  }
+function listProducts(products,intro){
+ if(!products.length){
+  return 'No encontré productos de esta categoría en el catálogo público de Shopify. Puedes revisar todas las joyas aquí: '+
+   links.catalogo+
+   '\nTambién puedes escribir el nombre exacto del producto para buscarlo.';
+ }
 
-  return intro + '\n\n' + products.map(product =>
-    '• ' + product.title +
-    (product.price !== null && product.price > 0
-      ? ' — ' + money(product.price)
-      : ' — precio por confirmar') +
-    (product.available ? '' : ' — no disponible actualmente') +
-    '\n' + productUrl(product)
-  ).join('\n\n') +
-    '\n\nDime cuál te interesa y te doy sus detalles.';
+ return intro+'\n\n'+products.map(p=>
+  '✨ '+p.title+
+  (p.price!==null?' — '+money(p.price):' — precio por confirmar')+
+  (p.available?'':' — no disponible actualmente')+
+  '\n'+productUrl(p)
+ ).join('\n\n')+
+ '\n\n¿Quieres conocer el precio, los materiales o los detalles de alguna de estas joyas?';
 }
 
-function parseBudget(text) {
-  const q = normalize(text);
+function parseBudget(text){
+ const q=normalize(text);
 
-  if (/sin presupuesto|cualquier precio|no importa el precio|sin limite/.test(q)) {
-    return 'sin limite';
-  }
+ if(/sin presupuesto|cualquier precio|no importa el precio|sin limite/.test(q)){
+  return 'sin limite';
+ }
 
-  const match = q.match(/\d[\d.,]*/);
+ const match=q.match(/\d[\d.,]*/);
+ if(!match)return '';
 
-  if (!match) return '';
+ let n=Number(match[0].replace(/[.,]/g,''));
 
-  let number = Number(match[0].replace(/[.,]/g, ''));
+ if(/\bmil\b|\bk\b/.test(q)&&n<1000)n*=1000;
+ if(/millon/.test(q)&&n<1000000)n*=1000000;
 
-  if (/\bmil\b|\bk\b/.test(q) && number < 1000) {
-    number *= 1000;
-  }
-
-  if (/millon/.test(q) && number < 1000000) {
-    number *= 1000000;
-  }
-
-  return Number.isFinite(number) && number > 0 ? number : '';
+ return Number.isFinite(n)&&n>0?n:'';
 }
 
-function isChoiceRequest(q) {
-  return /^(quiero ayuda para elegir una joya|ayudame a elegir una joya|quiero elegir una joya|ayuda para elegir|recomiendame una joya|quiero una recomendacion|elegir una joya|ayudame a escoger)$/.test(q);
+function isChoiceRequest(q){
+ return /^(quiero ayuda para elegir una joya|ayudame a elegir una joya|quiero elegir una joya|ayuda para elegir|recomiendame una joya|quiero una recomendacion|elegir una joya|ayudame a escoger)$/.test(q);
 }
 
-function isGreeting(q) {
-  return /^(hola|buenas|buenos dias|buenas tardes|buenas noches|hey|holi)$/.test(q);
+function isGreeting(q){
+ return /^(hola|buenas|buenos dias|buenas tardes|buenas noches|hey|holi)$/.test(q);
 }
 
-async function productAnswer(text) {
-  const products = await getProducts();
-  const result = searchProducts(products, text);
+function isGeneralProductQuestion(q){
+ return /cuanto cuesta|cuanto vale|precio|precios|disponible|disponibilidad|stock|producto|catalogo/.test(q);
+}
 
-  if (result.type === 'named') {
-    if (result.products.length === 1) {
-      return productDetails(result.products[0]);
-    }
+async function productAnswer(text){
+ const products=await getProducts();
+ const result=searchProducts(products,text);
 
-    return 'Encontré varios productos con nombres parecidos. ¿Cuál buscas?\n\n' +
-      result.products.map(product =>
-        '• ' + product.title + '\n' + productUrl(product)
-      ).join('\n\n');
+ if(result.type==='named'){
+  if(result.products.length===1){
+   return productDetails(result.products[0]);
   }
 
-  if (result.type === 'category') {
-    return listProducts(
-      result.products,
-      'Estas son algunas opciones de la categoría que buscas:'
+  return 'Encontré varios productos con nombres parecidos. ¿Cuál buscas?\n\n'+
+   result.products.map(p=>
+    '• '+p.title+'\n'+productUrl(p)
+   ).join('\n\n');
+ }
+
+ if(result.type==='category'){
+  return listProducts(
+   result.products,
+   'Estas son las opciones que encontré en la categoría '+result.category+':'
+  );
+ }
+
+ return 'No encontré una joya cuyo nombre coincida con «'+text+'». No quiero darte el precio de otro producto por error. Revisa el catálogo aquí: '+
+  links.catalogo+
+  '\nComprueba el nombre en la tienda y envíamelo de nuevo.';
+}
+
+async function recommendationCategory(text){
+ const category=categoryFrom(text);
+ const products=await getProducts();
+
+ if(category){
+  recommendation.category=category;
+
+  const matches=products.filter(p=>
+   productHasCategory(p,category)&&p.available
+  );
+
+  let result=listProducts(
+   matches.slice(0,5),
+   'Estas son algunas opciones de '+category+' que encontré en SAMELIA:'
+  );
+
+  result+='\n\n¿Cuál es tu presupuesto aproximado? Puedes decir «hasta 50 mil», «hasta 100 mil» o «sin límite».';
+
+  recommendationStep='budget';
+  return result;
+ }
+
+ if(/sorprendeme|cualquiera|no se|cualquier tipo/.test(normalize(text))){
+  recommendation.category='';
+
+  recommendationStep='budget';
+
+  return listProducts(
+   products.filter(p=>p.available).slice(0,5),
+   'Te muestro algunas joyas disponibles de diferentes categorías:'
+  )+'\n\n¿Cuál es tu presupuesto aproximado?';
+ }
+
+ return 'Puedo buscar cadenas, collares, aretes, anillos, pulseras, tobilleras, dijes, charms y sets. Escribe el tipo de joya que buscas.';
+}
+
+async function send(){
+ const text=entry.value.trim();
+ if(!text)return;
+
+ add(text,'user');
+ entry.value='';
+ sendButton.disabled=true;
+
+ const q=normalize(text);
+ let answer='';
+
+ try{
+  if(isChoiceRequest(q)){
+   recommendation={recipient:'',category:'',budget:null};
+   recommendationStep='recipient';
+   answer='¡Claro! 💗 Te ayudo a encontrar una joya de SAMELIA. ¿Es para ti o para regalar?';
+
+  }else if(recommendationStep==='recipient'){
+   recommendation.recipient=text;
+   recommendationStep='category';
+   answer='¡Qué lindo detalle! 🎁 ¿Qué tipo de joya buscas: cadena, collar, aretes, anillo, pulsera, tobillera, dije o set? También puedes escribir «sorpréndeme».';
+
+  }else if(recommendationStep==='category'){
+   answer=await recommendationCategory(text);
+
+  }else if(recommendationStep==='budget'){
+   const budget=parseBudget(text);
+
+   if(!budget){
+    answer='Dime tu presupuesto aproximado. Por ejemplo: «hasta 50000», «hasta 100 mil» o «sin límite».';
+   }else{
+    recommendation.budget=budget;
+
+    const products=await getProducts();
+    let matches=products.filter(p=>
+     p.available&&p.price!==null
     );
-  }
 
-  return 'No encontré una joya cuyo nombre coincida con «' + text +
-    '». No quiero darte el precio de otra pieza por error. Puedes revisar el catálogo aquí: ' +
-    links.catalogo +
-    '\nComprueba cómo aparece escrito el nombre en la tienda y envíamelo de nuevo.';
-}
-
-async function send() {
-  const text = entry.value.trim();
-
-  if (!text) return;
-
-  add(text, 'user');
-  entry.value = '';
-  sendButton.disabled = true;
-
-  const q = normalize(text);
-  let answer = null;
-
-  try {
-    if (isChoiceRequest(q)) {
-      recommendation = {
-        recipient: '',
-        category: '',
-        budget: null
-      };
-
-      recommendationStep = 'recipient';
-
-      answer = '¡Claro! 💗 Te ayudo a encontrar una joya de SAMELIA. ¿Es para ti o para regalar?';
-
-    } else if (recommendationStep === 'recipient') {
-      recommendation.recipient = text;
-      recommendationStep = 'category';
-
-      answer = '¡Qué lindo detalle! 🎁 ¿Qué tipo de joya buscas: cadena, collar, aretes, anillo o pulsera? También puedes escribir «sorpréndeme».';
-
-    } else if (recommendationStep === 'category') {
-      const category = categoryFrom(q);
-      const products = await getProducts();
-
-      if (category) {
-        recommendation.category = category;
-
-        const matches = products.filter(product =>
-          productHasCategory(product, category)
-        );
-
-        answer = listProducts(
-          matches.filter(product => product.available).slice(0, 4),
-          'Estas son algunas opciones que encontré en el catálogo para ti:'
-        );
-
-      } else if (/sorprendeme|cualquiera|no se/.test(q)) {
-        recommendation.category = '';
-
-        answer = listProducts(
-          products.filter(product => product.available).slice(0, 4),
-          'Te muestro algunas joyas disponibles en SAMELIA:'
-        );
-
-      } else {
-        answer = 'Puedo buscar cadenas, collares, aretes, anillos o pulseras. Escribe el tipo de joya que prefieres y te mostraré las opciones del catálogo.';
-        add(answer, 'bot');
-        sendButton.disabled = false;
-        entry.focus();
-        return;
-      }
-
-      recommendationStep = 'budget';
-
-      answer += '\n\n¿Tienes un presupuesto aproximado? Por ejemplo, «hasta 50 mil», «hasta 100 mil» o «sin límite».';
-
-    } else if (recommendationStep === 'budget') {
-      const budget = parseBudget(text);
-
-      if (!budget) {
-        answer = 'Dime tu presupuesto aproximado, por ejemplo «hasta 50000», «hasta 100 mil» o «sin límite». Así puedo filtrar las joyas.';
-      } else {
-        recommendation.budget = budget;
-
-        const products = await getProducts();
-
-        let matches = products.filter(product =>
-          product.available &&
-          product.price !== null &&
-          product.price > 0
-        );
-
-        if (recommendation.category) {
-          matches = matches.filter(product =>
-            productHasCategory(product, recommendation.category)
-          );
-        }
-
-        if (budget !== 'sin limite') {
-          matches = matches.filter(product =>
-            product.price <= Number(budget)
-          );
-        }
-
-        matches.sort((a, b) => a.price - b.price);
-
-        answer = listProducts(
-          matches.slice(0, 4),
-          'Estas son las opciones que encajan con tus preferencias y presupuesto:'
-        );
-
-        recommendationStep = '';
-      }
-
-    } else {
-      if (isGreeting(q)) {
-        answer = '¡Hola! ✨ Bienvenido a SAMELIA. ¿Buscas una joya para ti o para regalar?';
-
-      } else if (/envio|envios|entrega|domicilio|transportadora|coordinadora/.test(q)) {
-        answer = '🚚 Enviamos a Colombia. El envío es gratis en compras desde $150.000 COP; para compras inferiores cuesta $12.900 COP. El plazo estimado es de 10 días hábiles desde la confirmación del pago. Consulta las condiciones: ' + links.envios;
-
-      } else if (/contraentrega|metodos de pago|formas de pago|como puedo pagar|como se paga|pse|nequi|daviplata|visa|mastercard|american express|tarjeta|efectivo/.test(q)) {
-        answer = '💳 Puedes pagar con tarjetas Visa, Mastercard y American Express, además de Nequi, Daviplata y PSE. También contamos con pago contraentrega, sujeto a las condiciones del pedido. Consulta: ' + links.terminos;
-
-      } else if (/instagram|redes sociales/.test(q)) {
-        answer = '✨ Síguenos en Instagram para descubrir diseños y novedades: ' + links.instagram;
-
-      } else if (/privacidad|datos personales/.test(q)) {
-        answer = '🔒 Consulta nuestra política de privacidad aquí: ' + links.privacidad;
-
-      } else if (/devolucion|devolver|reembolso|garantia|defecto/.test(q)) {
-        answer = '💗 Consulta nuestra política de reembolsos y las condiciones aplicables aquí: ' + links.reembolsos + '\nSi necesitas ayuda con tu caso, escríbenos: ' + links.whatsapp;
-
-      } else if (/cuidar|cuidado|limpiar|limpieza|se oscurece/.test(q)) {
-        answer = '✨ Guarda tus joyas secas y por separado, evita perfumes y productos químicos, y límpialas suavemente con un paño especial. La plata 925 puede oscurecerse naturalmente con el tiempo.';
-
-      } else if (/material|plata|925|oro laminado|piedra natural|piedras preciosas/.test(q)) {
-        answer = '💎 En SAMELIA hay diseños con distintos materiales. Para confirmar el material de una pieza concreta, dime su nombre exacto y consultaré la ficha. Puedes explorar la colección aquí: ' + links.catalogo;
-
-      } else if (/humano|persona|asesor|asesora|equipo|contacto|whatsapp|hablar con alguien/.test(q)) {
-        answer = '💗 Escríbenos por WhatsApp y nuestro equipo te ayudará: ' + links.whatsapp;
-
-      } else {
-        const category = categoryFrom(q);
-
-        const asksProduct =
-          !!category ||
-          /cuanto cuesta|cuanto vale|precio|precios|disponible|disponibilidad|stock|producto|catalogo/.test(q);
-
-        if (asksProduct) {
-          answer = await productAnswer(text);
-        } else {
-          answer = 'Puedo ayudarte con envíos, pagos, materiales y productos del catálogo. Para buscar una joya concreta, escribe su nombre; para ver opciones generales, escribe «cadena», «collar», «aretes», «anillo» o «pulsera». También puedes consultar el catálogo: ' +
-            links.catalogo +
-            '\nAtención personalizada por WhatsApp: ' + links.whatsapp;
-        }
-      }
+    if(recommendation.category){
+     matches=matches.filter(p=>
+      productHasCategory(p,recommendation.category)
+     );
     }
 
-  } catch (error) {
-    console.error('Error del chatbot SAMELIA:', error);
+    if(budget!=='sin limite'){
+     matches=matches.filter(p=>p.price<=Number(budget));
+    }
 
-    answer = 'Ahora mismo no he podido consultar el catálogo de Shopify. Puedes ver los productos directamente aquí: ' +
-      links.catalogo +
-      '\nSi necesitas confirmar el precio o la disponibilidad de una pieza, escríbenos por WhatsApp: ' +
-      links.whatsapp;
+    matches.sort((a,b)=>a.price-b.price);
+
+    answer=listProducts(
+     matches.slice(0,5),
+     'Estas son las joyas que encajan con tus preferencias y presupuesto:'
+    );
+
+    recommendationStep='';
+   }
+
+  }else if(isGreeting(q)){
+   answer='¡Hola! ✨ Bienvenido a SAMELIA. ¿Buscas una joya para ti o para regalar?';
+
+  }else if(/envio|envios|entrega|domicilio|transportadora|coordinadora/.test(q)){
+   answer='🚚 Enviamos a Colombia. El envío es gratis en compras desde $150.000 COP; para compras inferiores cuesta $12.900 COP. El plazo estimado es de 10 días hábiles desde la confirmación del pago. Consulta las condiciones: '+links.envios;
+
+  }else if(/contraentrega|metodos de pago|formas de pago|como puedo pagar|como se paga|pse|nequi|daviplata|visa|mastercard|american express|tarjeta|efectivo/.test(q)){
+   answer='💳 Puedes pagar con tarjetas Visa, Mastercard y American Express, además de Nequi, Daviplata y PSE. También contamos con pago contraentrega, sujeto a las condiciones del pedido. Consulta: '+links.terminos;
+
+  }else if(/instagram|redes sociales/.test(q)){
+   answer='✨ Síguenos en Instagram para descubrir nuestros diseños y novedades: '+links.instagram;
+
+  }else if(/privacidad|datos personales/.test(q)){
+   answer='🔒 Consulta nuestra política de privacidad aquí: '+links.privacidad;
+
+  }else if(/devolucion|devolver|reembolso|garantia|defecto/.test(q)){
+   answer='💗 Consulta nuestra política de reembolsos y las condiciones aplicables aquí: '+links.reembolsos+'\nSi necesitas ayuda, escríbenos: '+links.whatsapp;
+
+  }else if(/cuidar|cuidado|limpiar|limpieza|se oscurece/.test(q)){
+   answer='✨ Guarda tus joyas secas y por separado. Evita perfumes, cloro y productos químicos. Límpialas suavemente con un paño especial para joyería. La plata 925 puede oscurecerse naturalmente con el tiempo.';
+
+  }else if(/material|plata|925|oro laminado|piedra natural|piedras preciosas/.test(q)){
+   answer='💎 Los materiales pueden variar según la joya. Dime el nombre del producto y consultaré la información de su ficha. También puedes explorar la colección: '+links.catalogo;
+
+  }else if(/humano|persona|asesor|asesora|equipo|contacto|whatsapp|hablar con alguien/.test(q)){
+   answer='💗 Escríbenos por WhatsApp y nuestro equipo te ayudará: '+links.whatsapp;
+
+  }else{
+   const category=categoryFrom(q);
+
+   if(category||isGeneralProductQuestion(q)){
+    answer=await productAnswer(text);
+   }else{
+    answer='Puedo ayudarte con cualquier categoría de joyería de SAMELIA. Prueba con «cadena», «collar», «aretes», «anillo», «pulsera», «tobillera», «dije», «charms» o «sets». También puedes preguntar por el nombre exacto de una joya, su precio, materiales o disponibilidad.\nCatálogo completo: '+links.catalogo;
+   }
   }
+ }catch(error){
+  console.error('Error consultando SAMELIA:',error);
 
-  add(answer, 'bot');
-  sendButton.disabled = false;
-  entry.focus();
+  answer='No he podido consultar el catálogo de Shopify en este momento. Puedes ver todas las categorías aquí: '+links.catalogo+
+   '\nSi necesitas confirmar el precio o la disponibilidad, escríbenos por WhatsApp: '+links.whatsapp;
+ }
+
+ add(answer,'bot');
+ sendButton.disabled=false;
+ entry.focus();
 }
 
-document.getElementById('form').addEventListener('submit', event => {
-  event.preventDefault();
-  send();
+document.getElementById('form').addEventListener('submit',event=>{
+ event.preventDefault();
+ send();
 });
 </script>
 </body>
