@@ -5,7 +5,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SAMELIA | Asistente virtual</title>
-
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#ECE8E4;color:#302923}
@@ -27,7 +26,6 @@ body{margin:0;font-family:Arial,sans-serif;background:#ECE8E4;color:#302923}
 .note{text-align:center;font-size:10px;color:#887e75;padding:0 0 10px}
 </style>
 </head>
-
 <body>
 <div class="chat">
   <header class="header">
@@ -38,7 +36,7 @@ body{margin:0;font-family:Arial,sans-serif;background:#ECE8E4;color:#302923}
   <main class="messages" id="messages" aria-live="polite">
     <div class="msg bot">¡Hola! Bienvenido a SAMELIA. ✨
 
-Soy tu asistente virtual y estoy aquí para ayudarte con productos, compras, envíos, pagos, cuidados de tus joyas, regalos y cualquier otra duda sobre nuestra tienda.
+Soy tu asistente virtual. Puedo ayudarte con productos, compras, envíos, pagos, regalos, materiales, tallas y cuidados de tus joyas.
 
 ¿Qué necesitas hoy?</div>
   </main>
@@ -79,15 +77,11 @@ let productCache = null;
 let productCacheAt = 0;
 let productRequest = null;
 
+/* Estado de la recomendación */
 let flow = '';
-let preferences = {
-  recipient: '',
-  category: '',
-  budget: null
-};
+let preferences = {recipient:'', category:'', budget:null};
 
-/* NORMALIZACIÓN */
-
+/* Normaliza tildes, mayúsculas y signos */
 function norm(value) {
   return String(value || '')
     .toLowerCase()
@@ -98,8 +92,7 @@ function norm(value) {
     .trim();
 }
 
-/* MENSAJES Y ENLACES */
-
+/* Mensajes con enlaces clicables */
 function add(text, who) {
   const div = document.createElement('div');
   div.className = 'msg ' + who;
@@ -108,18 +101,14 @@ function add(text, who) {
     if (/^https?:\/\//.test(part)) {
       const url = part.replace(/[.,!?]+$/, '');
       const a = document.createElement('a');
-
       a.href = url;
       a.textContent = url;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
-
       div.appendChild(a);
 
       const punctuation = part.slice(url.length);
-      if (punctuation) {
-        div.appendChild(document.createTextNode(punctuation));
-      }
+      if (punctuation) div.appendChild(document.createTextNode(punctuation));
     } else {
       div.appendChild(document.createTextNode(part));
     }
@@ -137,20 +126,13 @@ function quick(text) {
 function plain(html) {
   const el = document.createElement('div');
   el.innerHTML = String(html || '');
-
   el.querySelectorAll('script,style,noscript').forEach(n => n.remove());
-
   return (el.textContent || '').replace(/\s+/g, ' ').trim();
 }
 
-/* CATÁLOGO DE SHOPIFY */
-
+/* Catálogo de Shopify */
 async function getProducts(force = false) {
-  if (
-    !force &&
-    productCache &&
-    Date.now() - productCacheAt < CACHE_MS
-  ) {
+  if (!force && productCache && Date.now() - productCacheAt < CACHE_MS) {
     return productCache;
   }
 
@@ -158,25 +140,18 @@ async function getProducts(force = false) {
 
   productRequest = (async () => {
     const response = await fetch(PRODUCTS_URL, {
-      headers: { Accept: 'application/json' },
+      headers: {Accept:'application/json'},
       cache: 'no-store'
     });
 
-    if (!response.ok) {
-      throw new Error('Shopify HTTP ' + response.status);
-    }
+    if (!response.ok) throw new Error('Shopify HTTP ' + response.status);
 
     const data = await response.json();
-
-    if (!Array.isArray(data.products)) {
-      throw new Error('Catálogo inválido');
-    }
+    if (!Array.isArray(data.products)) throw new Error('Catálogo inválido');
 
     productCache = data.products.map(p => {
       const variants = Array.isArray(p.variants) ? p.variants : [];
-
-      const prices = variants
-        .map(v => Number(v.price))
+      const prices = variants.map(v => Number(v.price))
         .filter(v => Number.isFinite(v) && v >= 0);
 
       return {
@@ -207,9 +182,9 @@ async function getProducts(force = false) {
 
 function money(value) {
   return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0
+    style:'currency',
+    currency:'COP',
+    maximumFractionDigits:0
   }).format(value);
 }
 
@@ -221,65 +196,50 @@ function urlFor(p) {
 
 function details(p) {
   let text = '✨ ' + p.title + '\n';
+  text += 'Precio publicado: ' + (p.price !== null ? money(p.price) : 'por confirmar') + '.\n';
+  text += 'Disponibilidad: ' + (p.available ? 'disponible según Shopify' : 'no aparece disponible actualmente') + '.\n';
 
-  text += 'Precio publicado: ' +
-    (p.price !== null ? money(p.price) : 'por confirmar') + '.\n';
-
-  text += 'Disponibilidad: ' +
-    (p.available
-      ? 'disponible según Shopify'
-      : 'no aparece disponible actualmente') + '.\n';
-
-  if (p.description) {
-    text += 'Descripción: ' + p.description.slice(0, 500) + '\n';
-  }
+  if (p.description) text += 'Descripción: ' + p.description.slice(0, 500) + '\n';
 
   if (p.variants.length > 1) {
-    text += 'Opciones: ' +
-      p.variants.slice(0, 8).map(v =>
-        v.title + ' (' + money(v.price) + ')'
-      ).join(', ') + '\n';
+    text += 'Opciones: ' + p.variants.slice(0, 8)
+      .map(v => v.title + ' (' + money(v.price) + ')')
+      .join(', ') + '\n';
   }
 
   return text + 'Ver producto: ' + urlFor(p);
 }
 
-/* CATEGORÍAS */
-
+/* Categorías de productos */
 const CATEGORIES = {
-  cadenas: ['cadena', 'cadenas', 'gargantilla', 'gargantillas'],
-  collares: ['collar', 'collares', 'gargantilla', 'gargantillas'],
-  aretes: ['arete', 'aretes', 'pendiente', 'pendientes', 'candonga', 'candongas', 'topo', 'topos', 'argolla', 'argollas', 'huggie', 'huggies'],
-  anillos: ['anillo', 'anillos', 'sortija', 'sortijas'],
-  pulseras: ['pulsera', 'pulseras', 'brazalete', 'brazaletes'],
-  tobilleras: ['tobillera', 'tobilleras'],
-  dijes: ['dije', 'dijes', 'colgante', 'colgantes'],
-  charms: ['charm', 'charms'],
-  sets: ['set', 'sets', 'conjunto', 'conjuntos', 'juego', 'juegos'],
-  relojes: ['reloj', 'relojes']
+  cadenas:['cadena','cadenas','gargantilla','gargantillas'],
+  collares:['collar','collares','gargantilla','gargantillas'],
+  aretes:['arete','aretes','pendiente','pendientes','candonga','candongas','topo','topos','argolla','argollas','huggie','huggies'],
+  anillos:['anillo','anillos','sortija','sortijas'],
+  pulseras:['pulsera','pulseras','brazalete','brazaletes'],
+  tobilleras:['tobillera','tobilleras'],
+  dijes:['dije','dijes','colgante','colgantes'],
+  charms:['charm','charms'],
+  sets:['set','sets','conjunto','conjuntos','juego','juegos'],
+  relojes:['reloj','relojes']
 };
 
 function categoryFrom(text) {
   const words = norm(text).split(' ');
-
   for (const [category, terms] of Object.entries(CATEGORIES)) {
     if (terms.some(t => words.includes(t))) return category;
   }
-
   return '';
 }
 
 function hasCategory(p, category) {
   const terms = CATEGORIES[category] || [category];
-
-  const titleWords = norm(p.title).split(' ');
-  const tagWords = norm(p.tags).split(/[\s,]+/);
-  const descriptionWords = norm(p.description).split(' ');
+  const title = norm(p.title).split(' ');
+  const tags = norm(p.tags).split(/[\s,]+/);
+  const description = norm(p.description).split(' ');
 
   return terms.some(t =>
-    titleWords.includes(t) ||
-    tagWords.includes(t) ||
-    descriptionWords.includes(t)
+    title.includes(t) || tags.includes(t) || description.includes(t)
   );
 }
 
@@ -299,18 +259,14 @@ const STOP = new Set([
 
 function termsFrom(text) {
   const categoryWords = Object.values(CATEGORIES).flat();
-
   return [...new Set(norm(text).split(' ').filter(w =>
-    w.length > 2 &&
-    !STOP.has(w) &&
-    !categoryWords.includes(w)
+    w.length > 2 && !STOP.has(w) && !categoryWords.includes(w)
   ))];
 }
 
 function distance(a, b) {
   if (Math.abs(a.length - b.length) > 1) return 2;
-
-  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  const row = Array.from({length:b.length + 1}, (_, i) => i);
 
   for (let i = 1; i <= a.length; i++) {
     let d = row[0];
@@ -318,13 +274,11 @@ function distance(a, b) {
 
     for (let j = 1; j <= b.length; j++) {
       const old = row[j];
-
       row[j] = Math.min(
         row[j] + 1,
         row[j - 1] + 1,
         d + (a[i - 1] === b[j - 1] ? 0 : 1)
       );
-
       d = old;
     }
   }
@@ -335,20 +289,13 @@ function distance(a, b) {
 function titleScore(query, p) {
   const terms = termsFrom(query);
   const words = norm(p.title + ' ' + p.handle.replace(/-/g, ' ')).split(' ');
-
   if (!terms.length) return 0;
 
   let count = 0;
 
   for (const t of terms) {
-    if (words.includes(t)) {
-      count++;
-    } else if (
-      t.length >= 5 &&
-      words.some(w => w.length >= 5 && distance(t, w) === 1)
-    ) {
-      count += 0.8;
-    }
+    if (words.includes(t)) count++;
+    else if (t.length >= 5 && words.some(w => w.length >= 5 && distance(t, w) === 1)) count += 0.8;
   }
 
   return count / terms.length;
@@ -359,24 +306,20 @@ function searchProducts(products, query) {
   const terms = termsFrom(query);
 
   if (category && !terms.length) {
-    return {
-      type: 'category',
-      products: products.filter(p => hasCategory(p, category))
-    };
+    return {type:'category', products:products.filter(p => hasCategory(p, category))};
   }
 
   if (terms.length) {
     const matches = products
-      .map(p => ({ p, score: titleScore(query, p) }))
+      .map(p => ({p, score:titleScore(query, p)}))
       .filter(x => x.score >= 0.8)
       .sort((a, b) => b.score - a.score);
 
     if (matches.length) {
       const best = matches[0].score;
-
       return {
-        type: 'named',
-        products: matches
+        type:'named',
+        products:matches
           .filter(x => x.score >= Math.max(0.8, best - 0.15))
           .slice(0, 5)
           .map(x => x.p)
@@ -384,40 +327,28 @@ function searchProducts(products, query) {
     }
 
     if (category) {
-      return {
-        type: 'category',
-        products: products.filter(p => hasCategory(p, category))
-      };
+      return {type:'category', products:products.filter(p => hasCategory(p, category))};
     }
 
-    return { type: 'notfound', products: [] };
+    return {type:'notfound', products:[]};
   }
 
   if (category) {
-    return {
-      type: 'category',
-      products: products.filter(p => hasCategory(p, category))
-    };
+    return {type:'category', products:products.filter(p => hasCategory(p, category))};
   }
 
-  return { type: 'none', products: [] };
+  return {type:'none', products:[]};
 }
 
 function listProducts(items, intro) {
   if (!items.length) {
-    return 'No encontré productos que coincidan en el catálogo público de Shopify. Puedes consultar la tienda completa aquí: ' +
-      LINKS.catalogo +
-      '\nComprueba también el nombre o la categoría de la joya.';
+    return 'No encontré productos que coincidan en el catálogo público de Shopify. Consulta la tienda completa: ' + LINKS.catalogo;
   }
 
-  return intro + '\n\n' +
-    items.slice(0, 6).map(p =>
-      '✨ ' + p.title + ' — ' +
-      (p.price !== null ? money(p.price) : 'precio por confirmar') +
-      (p.available ? '' : ' (no disponible)') +
-      '\n' + urlFor(p)
-    ).join('\n\n') +
-    '\n\nDime el nombre de una joya si quieres conocer más detalles.';
+  return intro + '\n\n' + items.slice(0, 6).map(p =>
+    '✨ ' + p.title + ' — ' + (p.price !== null ? money(p.price) : 'precio por confirmar') +
+    (p.available ? '' : ' (no disponible)') + '\n' + urlFor(p)
+  ).join('\n\n') + '\n\nDime el nombre de una joya si quieres conocer más detalles.';
 }
 
 async function productAnswer(text) {
@@ -425,9 +356,7 @@ async function productAnswer(text) {
   const result = searchProducts(products, text);
 
   if (result.type === 'named') {
-    if (result.products.length === 1) {
-      return details(result.products[0]);
-    }
+    if (result.products.length === 1) return details(result.products[0]);
 
     return 'Encontré varias coincidencias. ¿Cuál te interesa?\n\n' +
       result.products.map(p => '• ' + p.title + '\n' + urlFor(p)).join('\n\n');
@@ -438,11 +367,10 @@ async function productAnswer(text) {
   }
 
   return 'No encontré una joya con un nombre que coincida con «' + text +
-    '». Para evitar darte información incorrecta, no voy a asignarle el precio de otro producto.\nCatálogo: ' +
-    LINKS.catalogo;
+    '». Puedes consultar el catálogo completo: ' + LINKS.catalogo;
 }
 
-/* INTENCIONES */
+/* Detección de intención */
 
 function isGreeting(q) {
   return /^(hola|buenas|buenos dias|buenas tardes|buenas noches|hey|holi)$/.test(q);
@@ -452,28 +380,28 @@ function wantsRecommendation(q) {
   return /elegir una joya|ayudame a elegir|recomiendame|recomendacion|ayuda para elegir|sorprendeme|que me recomiendas|que puedo regalar|que le regalo|quiero regalar|busco un regalo|ideas de regalo|regalo para|para mi mama|para mi madre|para mi pareja|para mi novia|para mi novio|para mi esposa|para mi esposo|cumpleanos|aniversario|ocasion especial/.test(q);
 }
 
-/* RESPUESTAS FRECUENTES */
+/* Preguntas frecuentes.
+   La limpieza se detecta con palabras explícitas y antes del flujo guiado. */
 
 function faq(q) {
+  if (/\blimpio\b|\blimpia\b|\blimpiar\b|\blimpias\b|\blimpian\b|\blimpieza\b|\blimpiarlas\b|\blimpiarlos\b|\blimpio mis\b|\bcuidado\b|\bcuidar\b|\bcuidar mis\b|\bconservar\b|\bguardar mis joyas\b/.test(q)) {
+    return '✨ Para limpiar tus joyas SAMELIA, pasa suavemente un paño limpio y suave para retirar residuos y humedad. Guárdalas completamente secas y por separado. Evita perfumes, cloro, alcohol, limpiadores domésticos y productos abrasivos, especialmente si tienen piedras o recubrimientos delicados. Los cuidados exactos dependen del material y del acabado de cada pieza.';
+  }
+
   if (/envio gratis|envio gratuito|desde 150|150000/.test(q)) {
     return '🚚 El envío es gratis en compras desde $150.000 COP. Para compras inferiores, la tarifa informada por SAMELIA es de $12.900 COP. Consulta las condiciones vigentes: ' + LINKS.envios;
   }
 
   if (/envio|envios|entrega|domicilio|transportadora|coordinadora|cuanto tarda|cuanto demora|dias habiles|llega a mi ciudad|envian a/.test(q)) {
-    return '🚚 Consulta la cobertura, tarifas y condiciones de envío en nuestra política oficial: ' + LINKS.envios +
-      '\nEl plazo estimado informado es de 10 días hábiles desde la confirmación del pago. Los tiempos pueden depender del destino y la transportadora.';
+    return '🚚 Consulta la cobertura, tarifas y condiciones de envío: ' + LINKS.envios + '\nEl plazo estimado informado es de 10 días hábiles desde la confirmación del pago. Los tiempos pueden depender del destino y la transportadora.';
   }
 
   if (/rastrea|seguimiento|numero de guia|guia de envio|donde esta mi pedido|pedido no llega|pedido no ha llegado|pedido retrasado|estado de mi pedido/.test(q)) {
-    return '📦 Este chat aún no consulta automáticamente los pedidos privados de Shopify. Revisa la confirmación de compra y la guía de la transportadora. Si necesitas ayuda, escríbenos por WhatsApp: ' + LINKS.whatsapp;
+    return '📦 Este chat no consulta automáticamente los pedidos privados de Shopify. Revisa la confirmación de compra y la guía de la transportadora. Si necesitas ayuda, escríbenos por WhatsApp: ' + LINKS.whatsapp;
   }
 
   if (/cambiar direccion|modificar direccion|direccion de entrega|me equivoque de direccion/.test(q)) {
     return '📍 Contacta cuanto antes con nuestro equipo por WhatsApp: ' + LINKS.whatsapp + '. El cambio depende de si el pedido ya fue preparado o enviado.';
-  }
-
-  if (/recoger personalmente|recoger mi pedido|recogida en tienda/.test(q)) {
-    return 'Para confirmar si es posible recoger un pedido personalmente, consulta con nuestro equipo por WhatsApp: ' + LINKS.whatsapp + '.';
   }
 
   if (/metodos de pago|formas de pago|como puedo pagar|como se paga|pse|nequi|daviplata|visa|mastercard|american express|tarjeta|efectivo|transferencia|contraentrega/.test(q)) {
@@ -481,39 +409,35 @@ function faq(q) {
   }
 
   if (/pago rechazado|no pasa el pago|pago fallo|pago fallido|me cobraron|cobro duplicado|cobraron pero|no aparece mi pago/.test(q)) {
-    return '💳 Si el pago fue rechazado o aparece un cobro sin confirmación, revisa primero el estado de tu pedido y el comprobante. No vuelvas a pagar hasta comprobar si se generó el pedido. Si persiste, contacta a nuestro equipo: ' + LINKS.whatsapp;
+    return '💳 Si el pago fue rechazado o aparece un cobro sin confirmación, revisa primero el estado del pedido y el comprobante. No vuelvas a pagar hasta comprobar si se generó el pedido. Si persiste, contacta con nuestro equipo: ' + LINKS.whatsapp;
   }
 
   if (/compra segura|es seguro comprar|seguridad de la compra|pagina segura/.test(q)) {
-    return '🔒 Para comprar, utiliza el sitio oficial https://samelia.co y verifica que la dirección sea correcta antes de introducir tus datos. Consulta los términos y la política de privacidad: ' + LINKS.terminos + ' ' + LINKS.privacidad;
+    return '🔒 Para comprar, utiliza el sitio oficial https://samelia.co. Consulta los términos y la política de privacidad: ' + LINKS.terminos + ' ' + LINKS.privacidad;
   }
 
   if (/como comprar|como puedo comprar|hacer un pedido|realizar un pedido|comprar una joya/.test(q)) {
-    return '🛍️ Para comprar en SAMELIA: 1. Elige una joya. 2. Abre su ficha y revisa el precio y las características. 3. Añádela al carrito. 4. Continúa al checkout y completa los datos solicitados. 5. Selecciona un método de pago disponible y confirma el pedido. Catálogo: ' + LINKS.catalogo;
+    return '🛍️ Para comprar: 1. Elige una joya. 2. Abre su ficha y revisa el precio y las características. 3. Añádela al carrito. 4. Completa los datos del checkout. 5. Selecciona un método de pago disponible y confirma el pedido. Catálogo: ' + LINKS.catalogo;
   }
 
   if (/carrito|anadir al carrito|agregar al carrito|no me deja comprar|no puedo comprar|error en la pagina|no funciona la tienda/.test(q)) {
-    return '🛒 Comprueba que el producto esté disponible, que hayas seleccionado las opciones necesarias y que el navegador permita cargar la tienda. Si el problema continúa, envíanos una captura por WhatsApp: ' + LINKS.whatsapp;
+    return '🛒 Comprueba que el producto esté disponible y que hayas seleccionado las opciones necesarias. Si el problema continúa, envíanos una captura por WhatsApp: ' + LINKS.whatsapp;
   }
 
   if (/cancelar pedido|cancelacion del pedido/.test(q)) {
     return 'Para solicitar una cancelación, contacta cuanto antes con nuestro equipo por WhatsApp: ' + LINKS.whatsapp + '. La posibilidad de cancelarlo depende del estado del pedido y de las políticas aplicables.';
   }
 
-  if (/cambio|devolucion|devolver|reembolso|dinero de vuelta|garantia/.test(q)) {
-    return '💗 Consulta las condiciones y el procedimiento aplicable en nuestra política oficial: ' + LINKS.devoluciones + '\nSi quieres presentar un caso, contacta con nuestro equipo: ' + LINKS.whatsapp;
-  }
-
   if (/llego danado|llego roto|producto equivocado|joya equivocada|falta un producto|producto faltante|pedido incompleto/.test(q)) {
     return '💗 Lamentamos el inconveniente. Conserva el embalaje, toma fotos de lo recibido y guarda la confirmación de compra. Escríbenos por WhatsApp con el número de pedido y las evidencias: ' + LINKS.whatsapp;
   }
 
-  if (/cuanto tarda el reembolso|cuando recibo el reembolso|quien paga el envio de devolucion/.test(q)) {
-    return 'Los plazos y gastos dependen de las condiciones aplicables a tu caso. Consulta la política oficial: ' + LINKS.devoluciones + '. Para que revisemos tu situación, escríbenos: ' + LINKS.whatsapp;
+  if (/cuanto tarda el reembolso|cuando recibo el reembolso|quien paga el envio de devolucion|devolucion|devolver|reembolso|dinero de vuelta|garantia|cambio de producto/.test(q)) {
+    return '💗 Consulta las condiciones y el procedimiento aplicable en nuestra política oficial: ' + LINKS.devoluciones + '\nSi quieres presentar un caso, contacta con nuestro equipo: ' + LINKS.whatsapp;
   }
 
   if (/plata 925|que significa 925|significa plata|es plata de verdad|plata autentica/.test(q)) {
-    return '💎 La indicación 925 se refiere a una aleación compuesta por un 92,5 % de plata. Para confirmar el material de una joya concreta, revisa su ficha de producto o dime su nombre para buscarla en el catálogo.';
+    return '💎 La indicación 925 se refiere a una aleación compuesta por un 92,5 % de plata. Para confirmar el material de una joya concreta, revisa su ficha o dime su nombre para buscarla en el catálogo.';
   }
 
   if (/hipoalergen|alergia|alergico|alergica|contiene niquel|niquel/.test(q)) {
@@ -521,32 +445,27 @@ function faq(q) {
   }
 
   if (/se pone negra|se ponen negras|se oscurece|pierde el color|pierden el color|se oxida|se mancha|plata negra/.test(q)) {
-    return '✨ La plata puede oscurecerse con el tiempo por la reacción con el ambiente, la humedad y otras sustancias. Los acabados y recubrimientos pueden necesitar cuidados distintos. Evita productos abrasivos y guarda tus joyas secas.';
+    return '✨ La plata puede oscurecerse con el tiempo por la reacción con el ambiente, la humedad y otras sustancias. Los acabados pueden necesitar cuidados distintos. Evita productos abrasivos y guarda tus joyas secas.';
   }
 
   if (/puedo mojar|ducharme|ducha|piscina|mar|nadar|dormir con|hacer ejercicio con/.test(q)) {
-    return '💎 Para conservar tus joyas, es recomendable evitar el contacto prolongado con agua, cloro, perfumes, cremas y sudor. Los cuidados exactos dependen del material y del acabado de cada pieza.';
-  }
-
-  /* LIMPIEZA: se comprueba antes de cualquier flujo de recomendaciones. */
-  if (/\blimpi\w*|\bcuid\w*|guardar las joyas|conservar las joyas|mantener las joyas|como mantener mis joyas/.test(q)) {
-    return '✨ Para limpiar tus joyas SAMELIA, pasa suavemente un paño limpio y suave para retirar residuos y humedad. Guárdalas completamente secas y por separado. Evita perfumes, cloro, alcohol, limpiadores domésticos y productos abrasivos, especialmente si tienen piedras o recubrimientos delicados. Los cuidados exactos dependen del material y del acabado de cada pieza.';
+    return '💎 Para conservar tus joyas, evita el contacto prolongado con agua, cloro, perfumes, cremas y sudor. Los cuidados exactos dependen del material y del acabado de cada pieza.';
   }
 
   if (/talla de anillo|medida de anillo|saber mi talla|no se mi talla|que talla soy/.test(q)) {
-    return '💍 Para conocer tu talla de anillo, mide la circunferencia de tu dedo con una tira de papel sin apretarla y compara la medida con una tabla de tallas fiable. Si la ficha del producto incluye medidas, úsala como referencia. Para confirmar tallas disponibles, consulta al equipo: ' + LINKS.whatsapp;
+    return '💍 Para conocer tu talla de anillo, mide la circunferencia de tu dedo sin apretar y compara la medida con una tabla de tallas fiable. Para confirmar tallas disponibles, consulta al equipo: ' + LINKS.whatsapp;
   }
 
-  if (/cuanto mide|longitud de la cadena|largo de la cadena|medidas de la cadena|medida de pulsera|talla de pulsera|grande o pequeno|grande o pequena|peso de la joya|longitud del collar/.test(q)) {
-    return '📏 Las medidas y el peso dependen de cada diseño. Dime el nombre exacto de la joya para buscar la información disponible en su ficha. Si no está publicada, el equipo podrá ayudarte: ' + LINKS.whatsapp;
+  if (/cuanto mide|longitud de la cadena|largo de la cadena|medidas de la cadena|medida de pulsera|talla de pulsera|peso de la joya|longitud del collar/.test(q)) {
+    return '📏 Las medidas y el peso dependen de cada diseño. Dime el nombre exacto de la joya para buscar la información disponible. Si no está publicada, el equipo podrá ayudarte: ' + LINKS.whatsapp;
   }
 
   if (/empaque para regalo|empaque de regalo|envoltura de regalo|caja de regalo|enviar regalo directamente/.test(q)) {
-    return '🎁 Para confirmar si hay empaque de regalo o instrucciones especiales de entrega, contacta con nuestro equipo por WhatsApp: ' + LINKS.whatsapp + '.';
+    return '🎁 Para confirmar si hay empaque de regalo o instrucciones especiales de entrega, contacta con nuestro equipo por WhatsApp: ' + LINKS.whatsapp;
   }
 
   if (/descuento|descuentos|promocion|promociones|oferta|ofertas|comprar varias|descuento por cantidad/.test(q)) {
-    return '✨ Los precios y promociones vigentes deben comprobarse en la tienda. Consulta el catálogo para ver los precios actuales: ' + LINKS.catalogo + '. No puedo garantizar un descuento por cantidad si no aparece publicado.';
+    return '✨ Los precios y promociones vigentes deben comprobarse en la tienda: ' + LINKS.catalogo + '. No puedo garantizar un descuento por cantidad si no aparece publicado.';
   }
 
   if (/instagram|redes sociales|red social/.test(q)) {
@@ -576,15 +495,13 @@ function faq(q) {
   return null;
 }
 
-/* RECOMENDACIONES GUIADAS */
-
+/* Recomendaciones guiadas */
 async function recommendationStepAnswer(text) {
   const q = norm(text);
 
   if (flow === 'recipient') {
     preferences.recipient = text;
     flow = 'category';
-
     return '¡Qué lindo detalle! 🎁 ¿Qué tipo de joya buscas: cadena, collar, aretes, anillo, pulsera, tobillera o dije? También puedes decir «sorpréndeme».';
   }
 
@@ -595,23 +512,18 @@ async function recommendationStepAnswer(text) {
     if (category) {
       preferences.category = category;
       const items = products.filter(p => hasCategory(p, category) && p.available);
-
       flow = 'budget';
 
-      return listProducts(
-        items.slice(0, 5),
-        'Estas son algunas opciones de ' + category + ' que encontré para ti:'
-      ) + '\n\n¿Cuál es tu presupuesto aproximado? Por ejemplo, hasta $50.000, hasta $100.000 o sin límite.';
+      return listProducts(items.slice(0, 5), 'Estas son algunas opciones de ' + category + ' que encontré para ti:') +
+        '\n\n¿Cuál es tu presupuesto aproximado? Por ejemplo, hasta $50.000, hasta $100.000 o sin límite.';
     }
 
     if (/sorprendeme|cualquiera|no se|no tengo preferencia/.test(q)) {
       preferences.category = '';
       flow = 'budget';
 
-      return listProducts(
-        products.filter(p => p.available).slice(0, 5),
-        'Te muestro algunas joyas disponibles:'
-      ) + '\n\n¿Cuál es tu presupuesto aproximado?';
+      return listProducts(products.filter(p => p.available).slice(0, 5), 'Te muestro algunas joyas disponibles:') +
+        '\n\n¿Cuál es tu presupuesto aproximado?';
     }
 
     return 'Puedo ayudarte con cadenas, collares, aretes, anillos, pulseras, tobilleras y dijes. ¿Cuál prefieres?';
@@ -625,7 +537,6 @@ async function recommendationStepAnswer(text) {
     }
 
     preferences.budget = budget;
-
     const products = await getProducts();
 
     let items = products.filter(p => p.available && p.price !== null);
@@ -639,13 +550,9 @@ async function recommendationStepAnswer(text) {
     }
 
     items.sort((a, b) => a.price - b.price);
-
     flow = '';
 
-    return listProducts(
-      items.slice(0, 5),
-      'Estas son las opciones que encajan con tus preferencias y presupuesto:'
-    );
+    return listProducts(items.slice(0, 5), 'Estas son las opciones que encajan con tus preferencias y presupuesto:');
   }
 
   return null;
@@ -654,9 +561,7 @@ async function recommendationStepAnswer(text) {
 function parseBudget(text) {
   const q = norm(text);
 
-  if (/sin limite|cualquier precio|no importa el precio/.test(q)) {
-    return 'unlimited';
-  }
+  if (/sin limite|cualquier precio|no importa el precio/.test(q)) return 'unlimited';
 
   const m = q.match(/\d[\d.,]*/);
   if (!m) return null;
@@ -669,11 +574,12 @@ function parseBudget(text) {
   return n > 0 ? n : null;
 }
 
-/* ENVÍO DE MENSAJES
-   IMPORTANTE:
-   1. Primero se comprueban las preguntas frecuentes.
-   2. Una pregunta reconocida interrumpe el flujo guiado.
-   3. Solo si no hay respuesta frecuente se continúa la recomendación.
+/* ENVÍO PRINCIPAL
+   Orden obligatorio:
+   1. Saludos y comandos de salida.
+   2. Preguntas frecuentes.
+   3. Recomendaciones guiadas.
+   4. Búsqueda de productos.
 */
 
 async function send() {
@@ -692,33 +598,31 @@ async function send() {
 
     if (exitFlow) {
       flow = '';
-      preferences = { recipient: '', category: '', budget: null };
-
+      preferences = {recipient:'', category:'', budget:null};
       answer = 'Claro. ¿Qué otra duda tienes? Puedo ayudarte con productos, compras, pagos, envíos, materiales, tallas, cuidados y devoluciones.';
 
     } else if (isGreeting(q)) {
-      /* Un saludo no debe convertirse en una respuesta de presupuesto. */
       flow = '';
-
-      answer = '¡Hola! ✨ Bienvenido a SAMELIA. Puedo ayudarte con nuestros productos, precios, envíos, pagos, compras, cuidados y otras dudas. ¿Qué necesitas?';
+      preferences = {recipient:'', category:'', budget:null};
+      answer = '¡Hola! ✨ Bienvenido a SAMELIA. Puedo ayudarte con productos, precios, envíos, pagos, compras, cuidados y otras dudas. ¿Qué necesitas?';
 
     } else {
-      /* Las preguntas independientes tienen prioridad sobre la recomendación. */
+      /*
+       * Primero se comprueba la pregunta actual.
+       * No se procesa el flujo anterior antes de esto.
+       */
       answer = faq(q);
 
-      if (answer) {
-        /* Si se respondió otra consulta, se termina el flujo anterior. */
+      if (answer !== null) {
         flow = '';
-        preferences = { recipient: '', category: '', budget: null };
+        preferences = {recipient:'', category:'', budget:null};
 
-      } else if (wantsRecommendation(q) && !flow) {
+      } else if (wantsRecommendation(q)) {
         flow = 'recipient';
-        preferences = { recipient: '', category: '', budget: null };
-
+        preferences = {recipient:'', category:'', budget:null};
         answer = '¡Con mucho gusto! 💗 Te ayudaré a elegir una joya según tus preferencias. ¿Es para ti o para regalar?';
 
       } else if (flow) {
-        /* Solo llega aquí si el texto no era una pregunta frecuente. */
         answer = await recommendationStepAnswer(text);
 
       } else {
@@ -730,7 +634,6 @@ async function send() {
 
         if (productIntent) {
           answer = await productAnswer(text);
-
         } else {
           const terms = termsFrom(q);
 
